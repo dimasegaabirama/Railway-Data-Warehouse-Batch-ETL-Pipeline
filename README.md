@@ -230,20 +230,26 @@ DQ checks run as their **own Airflow task and image**, separate from the Spark l
 
 ```
 .
-├── airflow/                # Airflow assets (dags, config, plugins, variables)
-├── config/pipeline-config.yaml   # Table definitions (schema, write mode, deps, query)
-├── docker/                 # One docker-compose stack per service: airflow, hadoop, mongo, nessie, spark
-├── image/                  # Custom image build context
+├── airflow/dags/            # Airflow orchestration
+├── config/                  # Pipeline schemas, dependencies, and filters
+├── docker/                  # Per-service Compose stacks and build files
+├── images/                  # Architecture and service screenshots
+├── skills/                  # Repository-specific structure/refactor guidance
 ├── src/
-│   ├── app/                 # Entrypoints: bootstrap (Nessie/schema init) & pipeline runner
-│   ├── core/                 # Config managers, registry, Spark/Nessie session builders
-│   ├── data_quality/         # PyDeequ checks (bronze/silver/gold), own task/image
-│   ├── etl/                  # extract (mongo/iceberg) → transform (bronze/silver/gold) → load
-│   ├── models/                # Pydantic models backing the config managers
-│   └── utils/                 # nessie branch wrapper, table/text/filter utils
-├── start-all.sh / stop-all.sh
-└── pyproject.toml / uv.lock / requirements.txt
+│   ├── app/                  # Pipeline and bootstrap entry points
+│   ├── core/                 # Configuration, registry, sessions, logging
+│   ├── data_quality/        # PyDeequ checks by medallion stage
+│   ├── etl/                  # Extract, transform, and load modules
+│   ├── models/               # Pydantic configuration/result models
+│   ├── notebooks/            # Jupyter notebooks mounted by Spark Jupyter
+│   └── utils/                # Shared table, filter, text, and Nessie helpers
+├── .env.example              # Environment template (no secrets)
+├── pyproject.toml / uv.lock  # Package metadata and locked dependencies
+├── requirements.txt          # pip installation fallback
+└── start-all.sh / stop-all.sh
 ```
+
+See [Project_Folders_Structure_Blueprint.md](Project_Folders_Structure_Blueprint.md) for directory responsibilities, entry points, naming conventions, extension templates, and deployment path constraints.
 
 ## Preview
 
@@ -266,7 +272,7 @@ DQ checks run as their **own Airflow task and image**, separate from the Spark l
 
 ## Installation & Running
 
-**Prerequisites:** Docker + Docker Compose, Python 3.x, and [`uv`](https://docs.astral.sh/uv/) (fallback: `pip install -r requirements.txt`).
+**Prerequisites:** Docker + Docker Compose, [`uv`](https://docs.astral.sh/uv/), and Python 3.7.1-3.10. The pinned NumPy and pandas versions do not support newer Python releases; Python 3.8 is recommended.
 
 ### 1. Clone Repository
 
@@ -282,13 +288,37 @@ cp .env.example .env.global
 export PROJECT_DIR="$(pwd)"
 ```
 
+In Windows PowerShell, use:
+
+```powershell
+Copy-Item .env.example .env.global
+$env:PROJECT_DIR = (Get-Location).Path
+```
+
 `PROJECT_DIR` is required — the Docker Compose stacks use it to resolve bind mounts (`src/`, `config/`, `.env.global`) and to build the host paths Airflow passes into each Spark task container. Adjust credentials, ports, and `START_DATE` / `END_DATE` in `.env.global` as needed.
 
-### 3. Install Dependencies
+### 3. Select Python and Install Dependencies
+
+Check installed Python runtimes:
 
 ```bash
-uv sync
+uv python list --only-installed
 ```
+
+If Python 3.7 is already installed, create the project environment with it:
+
+```bash
+uv sync --python 3.7
+```
+
+If Python 3.7 is not installed, install and use Python 3.8 through `uv`:
+
+```bash
+uv python install 3.8
+uv sync --python 3.8
+```
+
+Verify the environment with `uv run python --version`. Use Bash, Git Bash, or WSL for the startup scripts below; PowerShell can be used for the Python setup commands.
 
 ### 4. Start Services
 

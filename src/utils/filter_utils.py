@@ -1,11 +1,13 @@
-import json 
-from datetime import datetime
-from typing_extensions import Optional
+import json
+
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
+from typing_extensions import Optional
 
 
-def build_mongo_incremental_filter(field: str, start_date: str, end_date: str, **kwargs):
+def build_mongo_incremental_filter(
+    field: str, start_date: str, end_date: str, **kwargs
+):
     """
     Build a MongoDB aggregation filter for bronze-stage extraction.
 
@@ -79,12 +81,11 @@ def build_iceberg_incremental_filter(
         Spark SQL filter expression.
     """
 
-    start_date = F.to_timestamp(F.lit(start_date))
-    end_date = F.to_timestamp(F.lit(end_date))
+    start_timestamp = F.to_timestamp(F.lit(start_date))
+    end_timestamp = F.to_timestamp(F.lit(end_date))
+    column = F.col(field)
 
-    field = F.coalesce(F.col(field).cast("timestamp"), F.lit(end_date) - F.expr("INTERVAL 1 SECOND"))
-
-    return (field >= start_date) & (field < end_date)
+    return (column >= start_timestamp) & (column < end_timestamp)
 
 def build_iceberg_boolean_filter(
     field: str, value: Optional[bool] = True, **kwargs

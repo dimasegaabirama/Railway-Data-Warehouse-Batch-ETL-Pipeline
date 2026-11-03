@@ -1,9 +1,16 @@
 import pyspark.sql.functions as F
-from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.types import BooleanType, DateType, DecimalType, DoubleType, IntegerType, LongType, StringType, TimestampType
+from pyspark.sql.types import (
+    BooleanType,
+    DateType,
+    DecimalType,
+    DoubleType,
+    IntegerType,
+    LongType,
+    StringType,
+    TimestampType,
+)
 
 from src.etl.transform import BaseTransform
-from src.models.etl_config import TransformResult
 
 
 class TrainPerformance(BaseTransform):
@@ -52,10 +59,10 @@ class TrainPerformance(BaseTransform):
                         F.col("f.final_price"),
                     ).otherwise(0)
                 ).alias("total_revenue"),
-                F.sum(F.when(F.col("f.family_flag") == True, 1).otherwise(0)).alias(
+                F.sum(F.when(F.col("f.family_flag"), 1).otherwise(0)).alias(
                     "family_ticket_count"
                 ),
-                F.sum(F.when(F.col("f.has_promo") == True, 1).otherwise(0)).alias(
+                F.sum(F.when(F.col("f.has_promo"), 1).otherwise(0)).alias(
                     "promo_ticket_count"
                 ),
                 F.max(
@@ -68,7 +75,10 @@ class TrainPerformance(BaseTransform):
             result_df = (
                 train_performance_dataframe.withColumn(
                     "occupancy_rate",
-                    F.round((F.col("net_tickets_sold") / F.col("capacity")) * 100, 2),
+                    F.when(
+                        F.col("capacity") > 0,
+                        F.round(F.col("net_tickets_sold") / F.col("capacity"), 4),
+                    ).otherwise(F.lit(0.0)),
                 )
                 .withColumn(
                     "is_fully_booked", F.col("net_tickets_sold") >= F.col("capacity")

@@ -1,6 +1,6 @@
 import pyspark.sql.functions as F
-from pyspark.sql.types import BooleanType
 from pyspark.sql import Window
+from pyspark.sql.types import BooleanType
 
 from src.etl.transform import BaseTransform
 from src.models.etl_config import TransformResult
@@ -66,8 +66,13 @@ class TicketsTransform(BaseTransform):
                         F.col("extra_info.promo_code").isNotNull(), F.lit(True)
                     ).otherwise(F.lit(False)),
                 )
-                .withColumn("day_of_week", F.dayofweek(F.col("departure_date")).cast("byte"))
-                .withColumn("is_weekend", F.col("day_of_week").isin([1, 7]))
+                .withColumn(
+                    "day_of_week",
+                    F.pmod(
+                        F.dayofweek(F.col("departure_date")) + F.lit(5), F.lit(7)
+                    ).cast("byte"),
+                )
+                .withColumn("is_weekend", F.col("day_of_week").isin([5, 6]))
                 .withColumn(
                     "booking_lead_days",
                     F.greatest(

@@ -128,7 +128,7 @@ class TestTrainPerformance(BaseTest):
             .satisfies(
                 """
                 capacity = 0
-                OR ((occupancy_rate - (net_tickets_sold / capacity) * 100) < 0.01)
+                OR (ABS(occupancy_rate - (net_tickets_sold / capacity)) < 0.0001)
                 """,
                 "occupancy_rate_matches_calculation",
                 lambda x: x == 1.0,

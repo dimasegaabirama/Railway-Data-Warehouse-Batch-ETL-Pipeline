@@ -59,7 +59,9 @@ class TestCancellationSummary(BaseTest):
         check = (
             Check(self.session, CheckLevel.Error, "CancellationSummary - Rate Range")
             .satisfies(
-                "cancellation_rate >= 0 AND cancellation_rate <= 100",
+                "cancellation_rate >= 0 AND cancellation_rate <= 1.0 "
+                "AND cancelled_after_payment_rate >= 0 "
+                "AND cancelled_after_payment_rate <= 1.0",
                 "cancellation_rate_in_range",
                 lambda x: x == 1.0,
             )

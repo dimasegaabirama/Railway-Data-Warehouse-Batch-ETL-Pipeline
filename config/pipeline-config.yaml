@@ -245,10 +245,10 @@ tables:
         ON t.id = s.id AND t.is_active = true
 
         WHEN MATCHED AND (
-          t.name <> s.name OR 
-          t.gender <> s.gender OR 
-          t.phone <> s.phone OR 
-          t.email <> s.email
+          NOT (t.name <=> s.name) OR
+          NOT (t.gender <=> s.gender) OR
+          NOT (t.phone <=> s.phone) OR
+          NOT (t.email <=> s.email)
         )
         THEN UPDATE SET
           t.is_active = false,
@@ -280,26 +280,6 @@ tables:
         FROM {table_view} p
         LEFT ANTI JOIN 
             CURRENT_RECORD cr ON p.id = cr.id 
-
-      - |
-        WITH DEACTIVATED_RECORD AS (
-            SELECT t.id
-            FROM {full_table_name} t
-            LEFT ANTI JOIN {table_view} s
-                ON t.id = s.id
-            WHERE t.is_active = true AND t.id IS NOT NULL
-        )
-
-        UPDATE {full_table_name}
-        SET
-            is_active = false,
-            end_date = CAST('{end_date}' AS TIMESTAMP)
-        WHERE is_active = true
-          AND id IN (
-              SELECT id
-              FROM DEACTIVATED_RECORD
-          )
-
   stations:
     type: scd1
     partitioned_by: updated_at
@@ -417,9 +397,9 @@ tables:
         ON t.id = s.id AND t.is_active = true
 
         WHEN MATCHED AND (
-            t.name <> s.name OR 
-            t.type <> s.type OR 
-            t.capacity <> s.capacity
+            NOT (t.name <=> s.name) OR
+            NOT (t.type <=> s.type) OR
+            NOT (t.capacity <=> s.capacity)
         )
         THEN UPDATE SET 
             t.is_active = false,
@@ -452,26 +432,6 @@ tables:
         FROM {table_view} sc 
         LEFT ANTI JOIN CURRENT_RECORD cr 
         ON sc.id = cr.id
-   
-      - |
-        WITH DEACTIVATED_RECORD AS (
-            SELECT t.id
-            FROM {full_table_name} t
-            LEFT ANTI JOIN {table_view} s
-                ON t.id = s.id
-            WHERE t.is_active = true AND t.id IS NOT NULL
-        )
-
-        UPDATE {full_table_name}
-        SET
-            is_active = false,
-            end_date = CAST('{end_date}' AS TIMESTAMP)
-        WHERE is_active = true
-          AND id IN (
-              SELECT id
-              FROM DEACTIVATED_RECORD
-          )
-
   routes:
     type: scd1
     partitioned_by: updated_at
@@ -663,26 +623,26 @@ tables:
         ON t.ticket_id = s.ticket_id
 
         WHEN MATCHED AND (
-            t.route_sk_id <> s.route_sk_id
-            OR t.passenger_sk_id <> s.passenger_sk_id
-            OR t.train_sk_id <> s.train_sk_id
-            OR t.class_id <> s.class_id
-            OR t.payment_id <> s.payment_id
-            OR t.active_status_id <> s.active_status_id
-            OR t.day_of_week <> s.day_of_week
-            OR t.booking_lead_days <> s.booking_lead_days
-            OR t.departure_date <> s.departure_date
-            OR t.paid_at <> s.paid_at
-            OR t.cancelled_at <> s.cancelled_at
-            OR t.refunded_at <> s.refunded_at
-            OR t.created_at <> s.created_at
-            OR t.price <> s.price
-            OR t.discount <> s.discount
-            OR t.final_price <> s.final_price
-            OR t.family_flag <> s.family_flag
-            OR t.has_child <> s.has_child
-            OR t.has_promo <> s.has_promo
-            OR t.is_weekend <> s.is_weekend
+          NOT (t.route_sk_id <=> s.route_sk_id)
+          OR NOT (t.passenger_sk_id <=> s.passenger_sk_id)
+          OR NOT (t.train_sk_id <=> s.train_sk_id)
+          OR NOT (t.class_id <=> s.class_id)
+          OR NOT (t.payment_id <=> s.payment_id)
+          OR NOT (t.active_status_id <=> s.active_status_id)
+          OR NOT (t.day_of_week <=> s.day_of_week)
+          OR NOT (t.booking_lead_days <=> s.booking_lead_days)
+          OR NOT (t.departure_date <=> s.departure_date)
+          OR NOT (t.paid_at <=> s.paid_at)
+          OR NOT (t.cancelled_at <=> s.cancelled_at)
+          OR NOT (t.refunded_at <=> s.refunded_at)
+          OR NOT (t.created_at <=> s.created_at)
+          OR NOT (t.price <=> s.price)
+          OR NOT (t.discount <=> s.discount)
+          OR NOT (t.final_price <=> s.final_price)
+          OR NOT (t.family_flag <=> s.family_flag)
+          OR NOT (t.has_child <=> s.has_child)
+          OR NOT (t.has_promo <=> s.has_promo)
+          OR NOT (t.is_weekend <=> s.is_weekend)
         )
         THEN UPDATE SET 
             t.route_sk_id = s.route_sk_id,
@@ -694,9 +654,9 @@ tables:
             t.day_of_week = s.day_of_week,
             t.booking_lead_days = s.booking_lead_days,
             t.departure_date = s.departure_date,
-            t.paid_at = s.paid_at,
-            t.cancelled_at = s.cancelled_at,
-            t.refunded_at = s.refunded_at,
+            t.paid_at = greatest(t.paid_at, s.paid_at),
+            t.cancelled_at = greatest(t.cancelled_at, s.cancelled_at),
+            t.refunded_at = greatest(t.refunded_at, s.refunded_at),
             t.created_at = s.created_at,
             t.price = s.price,
             t.discount = s.discount,
@@ -1166,20 +1126,10 @@ filters:
           field: created_at
           strategy: incremental
 
-        - table: passengers
-          field: is_active
-          strategy: boolean
-          value: true
-
         - table: routes
           field: is_deleted
           strategy: boolean
           value: false
-
-        - table: trains
-          field: is_active
-          strategy: boolean
-          value: true
 
       passengers:
         - table: passengers
@@ -1192,8 +1142,14 @@ filters:
           strategy: incremental
 
         - table: trains
-          field: end_date
-          strategy: incremental
+          field: is_active
+          strategy: boolean
+          value: true
+
+        - table: stations
+          field: is_deleted
+          strategy: boolean
+          value: false
           
       trains:
         - table: trains
@@ -1227,11 +1183,6 @@ filters:
         - table: tickets
           field: created_at
           strategy: incremental
-
-        - table: trains
-          field: is_active
-          strategy: boolean
-          value: true
 
       
       
