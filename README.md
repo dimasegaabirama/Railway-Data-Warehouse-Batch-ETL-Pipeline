@@ -86,73 +86,11 @@ How each table moves from **Source (MongoDB) → Bronze → Silver → Gold**, p
 
 `class`, `status`, and `payment` are small **static lookup dimensions** — created directly in the Silver layer (no Source/Bronze step) since they hold fixed reference values. `routes` depends on `stations` and `trains`, while `tickets` (fact table) depends on nearly every dimension and runs last among the Silver tables. The four **Gold** tables are aggregates on top of Silver — all depend on `tickets`, and `train_performance` also depends on `trains`.
 
-```mermaid
-flowchart LR
-    subgraph Source["MongoDB Source"]
-        S_pass["passengers"]
-        S_stat["stations"]
-        S_train["trains"]
-        S_route["routes"]
-        S_tick["tickets"]
-    end
-    subgraph Bronze["Bronze layer"]
-        B_pass["passengers"]
-        B_stat["stations"]
-        B_train["trains"]
-        B_route["routes"]
-        B_tick["tickets"]
-    end
-    subgraph Silver["Silver layer"]
-        SV_pass["passengers (scd2)"]
-        SV_stat["stations (scd1)"]
-        SV_train["trains (scd2)"]
-        SV_route["routes (scd1)"]
-        SV_tick["tickets (fact)"]
-        SV_class["class (scd1, static)"]
-        SV_status["status (scd1, static)"]
-        SV_payment["payment (scd1, static)"]
-    end
-    subgraph Gold["Gold layer (aggregates)"]
-        G_cancel["cancellation_summary"]
-        G_revenue["revenue_daily"]
-        G_refund["refund_loss"]
-        G_perf["train_performance"]
-    end
-
-    S_pass --> B_pass --> SV_pass
-    S_stat --> B_stat --> SV_stat
-    S_train --> B_train --> SV_train
-    S_route --> B_route --> SV_route
-    S_tick --> B_tick --> SV_tick
-
-    SV_stat -. depends_on .-> SV_route
-    SV_train -. depends_on .-> SV_route
-    SV_stat -. depends_on .-> SV_tick
-    SV_route -. depends_on .-> SV_tick
-    SV_train -. depends_on .-> SV_tick
-    SV_pass -. depends_on .-> SV_tick
-    SV_class -. depends_on .-> SV_tick
-    SV_status -. depends_on .-> SV_tick
-    SV_payment -. depends_on .-> SV_tick
-
-    SV_tick -. depends_on .-> G_cancel
-    SV_tick -. depends_on .-> G_revenue
-    SV_tick -. depends_on .-> G_refund
-    SV_tick -. depends_on .-> G_perf
-    SV_train -. depends_on .-> G_perf
-```
+![Schema Flow](images/table_schema_flow.png)
 
 ## Tech Stack
 
-| Component | Technology |
-|---|---|
-| Data Source | MongoDB |
-| Processing Engine | Apache Spark |
-| Data Quality | PyDeequ |
-| Table/Warehouse Catalog | Nessie REST Catalog (Apache Iceberg) |
-| Storage | HDFS |
-| Orchestrator | Apache Airflow |
-| Package Management | uv (`pyproject.toml` / `uv.lock`) |
+![Tech Stack](images/tech_stack.png)
 
 ## Medallion Architecture
 
@@ -178,21 +116,7 @@ A **per-stage, per-table** branching strategy: `<stage>_<table_name>` (e.g. `bro
 
 **Why:** if one table fails to process or fails its DQ check, only that table/stage needs to be retried — not the entire pipeline.
 
-```mermaid
-flowchart LR
-    A["create_branch"] --> B["transform_bronze (Spark)"]
-    B --> C{"test_bronze (PyDeequ)"}
-    C -->|pass| D["load_bronze"] --> E["merge_bronze_to_main"]
-    C -->|fail| F["drop_branch + alert"]
-    E --> G["transform_silver (Spark)"]
-    G --> H{"test_silver (PyDeequ)"}
-    H -->|pass| I["load_silver"] --> J["merge_silver_to_main"]
-    H -->|fail| F
-    J --> K["transform_gold (Spark)"]
-    K --> L{"test_gold (PyDeequ)"}
-    L -->|pass| M["load_gold"] --> N["merge_gold_to_main"]
-    L -->|fail| F
-```
+![Nessie Branching](images/nessie_branching_strategy.png)
 
 DQ checks run as their **own Airflow task and image**, separate from the Spark load task — keeping load and validation independently retryable, and keeping the load image lighter.
 
