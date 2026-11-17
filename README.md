@@ -19,14 +19,7 @@ Batch data pipeline for processing train operational data (passengers, stations,
 
 ### Pipeline Flow (logical)
 
-```mermaid
-flowchart LR
-    A[MongoDB<br/>Data Source] -->|Extract| B[Spark<br/>Data Processing]
-    B -->|Read/Write| C[Nessie REST Catalog<br/>Warehouse Management]
-    C -->|Store| D[(HDFS<br/>Storage System)]
-    E[Airflow<br/>Orchestrator] -.->|Schedule & Trigger| B
-    E -.->|Schedule & Trigger| C
-```
+!(images/pipeline.png)
 
 1. **MongoDB** — raw operational data (source system).
 2. **Airflow** — schedules and triggers jobs on a batch cadence.
