@@ -19,7 +19,7 @@ Batch data pipeline for processing train operational data (passengers, stations,
 
 ### Pipeline Flow (logical)
 
-!(images/pipeline.png)
+![Pipeline](images/pipeline.png)
 
 1. **MongoDB** — raw operational data (source system).
 2. **Airflow** — schedules and triggers jobs on a batch cadence.
