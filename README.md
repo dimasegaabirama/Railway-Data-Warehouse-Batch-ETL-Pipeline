@@ -1,6 +1,6 @@
-# Train Batch Pipeline
+# Railway Data Warehouse & Batch ETL Pipeline
 
-Batch data pipeline for processing train operational data (passengers, stations, trains, routes, and tickets) from operational sources into a data warehouse, using a **Medallion Architecture** (Bronze → Silver → Gold).
+Designed and developed an end-to-end batch data pipeline to ingest and process railway operational data (passengers, stations, trains, routes, and tickets) into a data warehouse using Medallion Architecture (Bronze, Silver, and Gold). Implemented data orchestration with Apache Airflow, distributed processing with Apache Spark, and data storage using Apache Iceberg and Nessie. Integrated data quality checks using PyDeequ to ensure data accuracy and consistency.
 
 ## Table of Contents
 
